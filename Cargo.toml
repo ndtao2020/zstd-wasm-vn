@@ -20,5 +20,5 @@ panic = "abort"
 [dependencies]
 alloc_cat = "1"
 wasm-bindgen = "0.2"
-getrandom = { version = "0.2", default-features = false, features = ["js"] }
+getrandom = { version = "0.3", default-features = false, features = ["js"] }
 zstd = { version = "0.13", default-features = false, features = ["wasm"] }
