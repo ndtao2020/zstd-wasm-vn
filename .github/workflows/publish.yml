@@ -1,0 +1,54 @@
+name: Publish Package to NPM
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  id-token: write  # Required for OIDC
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          target: wasm32-unknown-unknown
+
+      - name: Cache cargo registry + index
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-registry-
+      
+      - name: Install necessary Tools
+        run: |
+          cargo install wasm-bindgen-cli
+          cargo install wasm-opt --locked
+
+      - name: Install dependencies C-Lang
+        run: sudo apt-get -y update && sudo apt-get install -y clang
+
+      - name: Test
+        run: cargo test
+
+      - name: Build packages
+        env:
+          RUST_LOG: debug
+        run: chmod +x build.sh && ./build.sh
+
+      - name: Authenticate with npm
+        run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
+
+      - name: Publish to NPM
+        run: cd pkg && npm publish

@@ -1,0 +1,58 @@
+{
+    "name": "zstd-wasm-vn",
+    "type": "module",
+    "collaborators": [
+        "ndtao2020"
+    ],
+    "description": "ZSTD for WebAssembly",
+    "version": "1.0.0",
+    "license": "MIT License",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/ndtao2020/zstd-wasm-vn"
+    },
+    "files": [
+        "web/",
+        "deno/",
+        "nodejs/",
+        "bundler/"
+    ],
+    "types": "./web/zstd_wasm_vn.d.ts",
+    "main": "./web/zstd_wasm_vn.js",
+    "sideEffects": [
+        "./snippets/*"
+    ],
+    "exports": {
+        "./bundler": {
+            "types": "./bundler/zstd_wasm_vn.d.ts",
+            "require": "./bundler/zstd_wasm_vn.js",
+            "import": "./bundler/zstd_wasm_vn.js"
+        },
+        "./deno": {
+            "types": "./deno/zstd_wasm_vn.d.ts",
+            "require": "./deno/zstd_wasm_vn.js",
+            "import": "./deno/zstd_wasm_vn.js"
+        },
+        "./nodejs": {
+            "types": "./nodejs/zstd_wasm_vn.d.ts",
+            "require": "./nodejs/zstd_wasm_vn.js",
+            "import": "./nodejs/zstd_wasm_vn.js"
+        },
+        "./web": {
+            "types": "./web/zstd_wasm_vn.d.ts",
+            "require": "./web/zstd_wasm_vn.js",
+            "import": "./web/zstd_wasm_vn.js"
+        },
+        ".": {
+            "types": "./web/zstd_wasm_vn.d.ts",
+            "require": "./web/zstd_wasm_vn.js",
+            "import": "./web/zstd_wasm_vn.js"
+        }
+    },
+    "keywords": [
+        "zstd",
+        "wasm",
+        "webassembly",
+        "vn"
+    ]
+}

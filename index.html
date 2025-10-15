@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en-US">
+
+<head>
+    <meta charset="utf-8" />
+    <title>x25519-wasm example</title>
+</head>
+
+<body>
+    <script type="module">
+        import init, { Zstd } from "./pkg/web/zstd_wasm_vn.js";
+
+        const encoder = new TextEncoder();
+        const decoder = new TextDecoder();
+
+        init().then(() => {
+            const str = "Compresses data using Zstandard compression"
+
+            const data = new TextEncoder().encode(str)
+            const compressed = Zstd.compress(data, undefined);
+            const decompressed = Zstd.decompress(compressed);
+
+            console.log("data: ", data);
+            console.log("compressed: ", compressed);
+            console.log("decompressed: ", decompressed);
+
+        });
+    </script>
+</body>
+
+</html>
