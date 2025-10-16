@@ -15,3 +15,7 @@ updates:
     target-branch: "main"
     schedule:
       interval: "monthly"
+    ignore:
+        # These are peer deps of Cargo and should not be automatically bumped
+        - dependency-name: "getrandom"
+        - dependency-name: "crates-io"
