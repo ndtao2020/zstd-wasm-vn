@@ -1,7 +1,12 @@
 #[global_allocator]
 pub static GLOBAL_ALLOCATOR: &alloc_cat::AllocCat = &alloc_cat::ALLOCATOR;
 
+use std::io::{BufReader, Cursor, Read, Write};
 use wasm_bindgen::prelude::*;
+use zstd::{
+    dict::{DecoderDictionary, EncoderDictionary},
+    stream::{read::Decoder, write::Encoder},
+};
 
 const DEFAULT_COMPRESSION_LEVEL: i32 = 6;
 const MIN_COMPRESSION_LEVEL: i32 = 1;
@@ -28,6 +33,47 @@ pub fn compress(data: &[u8], level: Option<i32>) -> Result<Vec<u8>, JsValue> {
         .map_err(|e| JsValue::from_str(&format!("Compression failed: {}", e)))
 }
 
+/// Compresses data using Zstandard compression with a dictionary
+///
+/// # Arguments
+///
+/// * `data` - Input data to compress
+/// * `dict` - The compression dictionary
+/// * `level` - Compression level (1-22, default 6). Higher = better compression but slower
+#[wasm_bindgen]
+pub fn compress_with_dict(
+    data: &[u8],
+    dict: &[u8],
+    level: Option<i32>,
+) -> Result<Vec<u8>, JsValue> {
+    let compression_level = level.unwrap_or(DEFAULT_COMPRESSION_LEVEL);
+
+    if compression_level < MIN_COMPRESSION_LEVEL || compression_level > MAX_COMPRESSION_LEVEL {
+        return Err(JsValue::from_str(&format!(
+            "Compression level must be between {} and {}",
+            MIN_COMPRESSION_LEVEL, MAX_COMPRESSION_LEVEL
+        )));
+    }
+
+    let mut results = Vec::<u8>::new();
+    let dict_trained = EncoderDictionary::copy(dict, compression_level);
+    let mut encoder = match Encoder::with_prepared_dictionary(&mut results, &dict_trained) {
+        Ok(d) => d,
+        Err(e) => {
+            return Err(JsValue::from_str(&e.to_string()));
+        }
+    };
+
+    if let Err(err) = encoder.write_all(data) {
+        return Err(JsValue::from_str(&err.to_string()));
+    }
+    if let Err(err) = encoder.finish() {
+        return Err(JsValue::from_str(&err.to_string()));
+    }
+
+    Ok(results)
+}
+
 /// Decompresses Zstandard compressed data
 ///
 /// # Arguments
@@ -37,6 +83,34 @@ pub fn compress(data: &[u8], level: Option<i32>) -> Result<Vec<u8>, JsValue> {
 pub fn decompress(compressed_data: &[u8]) -> Result<Vec<u8>, JsValue> {
     zstd::stream::decode_all(compressed_data)
         .map_err(|e| JsValue::from_str(&format!("Decompression failed: {}", e)))
+}
+
+/// Decompresses Zstandard compressed data using a dictionary
+///
+/// # Arguments
+///
+/// * `data` - Zstandard compressed data
+/// * `dict` - The decompression dictionary (must match the compression dictionary)
+#[wasm_bindgen]
+pub fn decompress_with_dict(data: &[u8], dict: &[u8]) -> Result<Vec<u8>, JsValue> {
+    let dict_trained = DecoderDictionary::copy(dict);
+
+    let mut decoder = match Decoder::with_prepared_dictionary(data, &dict_trained) {
+        Ok(d) => d,
+        Err(e) => {
+            return Err(JsValue::from_str(&e.to_string()));
+        }
+    };
+
+    let mut results = Vec::<u8>::new();
+
+    if let Err(err) = decoder.read_to_end(&mut results) {
+        return Err(JsValue::from_str(&err.to_string()));
+    }
+
+    decoder.finish();
+
+    Ok(results)
 }
 
 /// ZSTD compression and decompression for WebAssembly
@@ -51,8 +125,22 @@ impl Zstd {
     }
 
     #[wasm_bindgen]
+    pub fn compress_with_dict(
+        data: &[u8],
+        dict: &[u8],
+        level: Option<i32>,
+    ) -> Result<Vec<u8>, JsValue> {
+        compress_with_dict(data, dict, level)
+    }
+
+    #[wasm_bindgen]
     pub fn decompress(compressed_data: &[u8]) -> Result<Vec<u8>, JsValue> {
         decompress(compressed_data)
+    }
+
+    #[wasm_bindgen]
+    pub fn decompress_with_dict(compressed_data: &[u8], dict: &[u8]) -> Result<Vec<u8>, JsValue> {
+        decompress_with_dict(compressed_data, dict)
     }
 
     /// Returns the recommended default compression level
@@ -99,9 +187,6 @@ impl Zstd {
 }
 
 /// ==================================== [Streaming] ====================================
-use std::io::{BufReader, Cursor, Read, Write};
-use zstd::stream::{read::Decoder, write::Encoder};
-
 /// Streaming compression for large data
 #[wasm_bindgen]
 pub struct ZstdCompressor {
@@ -225,12 +310,24 @@ impl ZstdDecompressor {
 mod tests {
     use super::*;
 
+    const DICT: &[u8] = b"aaaaa";
+
     #[test]
     fn test_compress_decompress() {
         let data = b"Hello, World! This is a test string for ZSTD compression.";
 
         let compressed = Zstd::compress(data, None).unwrap();
         let decompressed = Zstd::decompress(&compressed).unwrap();
+
+        assert_eq!(data, decompressed.as_slice());
+    }
+
+    #[test]
+    fn test_compress_decompress_with_dict() {
+        let data = b"Hello, World! This is a test string for ZSTD compression.";
+
+        let compressed = compress_with_dict(data, DICT, None).unwrap();
+        let decompressed = decompress_with_dict(&compressed, DICT).unwrap();
 
         assert_eq!(data, decompressed.as_slice());
     }

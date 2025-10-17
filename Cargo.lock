@@ -336,7 +336,7 @@ dependencies = [
 
 [[package]]
 name = "zstd-wasm-vn"
-version = "1.1.0"
+version = "1.2.0"
 dependencies = [
  "alloc_cat",
  "getrandom 0.2.16",
